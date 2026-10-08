@@ -37,13 +37,12 @@
    Gli indirizzi dei deployment sono fissi qui sotto (MAI letti dall'URL: altrimenti un link
    preparato ad arte potrebbe far caricare un'altra app e consegnarle il token). */
 var APP_URL = "https://script.google.com/macros/s/AKfycbz7ABR4Kqp5h3OM8EsigA0WXibYiNQNvH_AS10Yxc8zwX6_CoCyQ6eXc_kQgAzdS2iNxQ/exec";   // .../macros/s/<ID>/exec
-var TEST_APP_URL = "https://script.google.com/macros/s/AKfycbxDLW5m0ISTdURDkAF50PV2RCtb1Ho0PMJl5nlJD9KLRiTSZiwAjz_Qci8S39UamYQqlQ/exec"; // usato solo con ?ambiente=prova
 var KEY = "baTrackerSession";
 
 var params = new URLSearchParams(location.search);
-var testMode = params.get("ambiente") === "prova";
-if (testMode) KEY = "baTrackerSessionProva";
-var base = testMode ? TEST_APP_URL : APP_URL;
+var base = APP_URL;
+// L'ambiente di prova (?ambiente=prova) è stato dismesso il 08/10/2026: si toglie la sua sessione rimasta.
+try { localStorage.removeItem("baTrackerSessionProva"); } catch (e) {}
 
 function get() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
 function set(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
