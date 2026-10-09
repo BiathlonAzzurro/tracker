@@ -59,6 +59,11 @@ var frame = document.createElement("iframe");
 frame.id = "app";
 frame.title = "Biathlon Azzurro Tracker";
 frame.allow = "clipboard-write";
+// Riquadro SENZA credenziali (Chrome/Edge): script.google.com non riceve i cookie degli account Google
+// del browser, quindi niente "Impossibile aprire il file" con più account collegati (successo il
+// 09/10/2026 dopo il lancio). Va impostato PRIMA di src. Safari e Firefox quei cookie ai riquadri non li mandano.
+frame.setAttribute("credentialless", "");
+try { frame.credentialless = true; } catch (e) {}
 frame.src = base + search;
 frame.addEventListener("load", function () { var w = document.getElementById("wait"); if (w) w.remove(); });
 document.body.appendChild(frame);
