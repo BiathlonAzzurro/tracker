@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BA Tracker (prova)</title>
+<meta name="description" content="Biathlon Azzurro Tracker">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0A1622">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BA Tracker">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root { --ink: #0A1622; --muted: #82A0BC; }
+  html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block;
+         padding-top: env(safe-area-inset-top); box-sizing: border-box; background: var(--ink); }
+  #wait { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+          color: var(--muted); font: 14px system-ui, -apple-system, "Segoe UI", sans-serif; }
+</style>
+</head>
+<body>
+<div id="wait">Caricamento Tracker…</div>
+<script>
+/* PAGINA GUSCIO del Biathlon Azzurro Tracker.
+   Il Tracker vive su Google Apps Script, che lo mostra sempre dentro un riquadro (iframe) di
+   googleusercontent.com. Su iPhone Safari cancella la memoria di quei riquadri ogni volta che
+   viene chiuso, quindi la sessione andrebbe persa di continuo. Questa pagina è la pagina
+   principale: mostra il Tracker al suo interno e conserva LEI il token di sessione, passandolo
+   al Tracker con postMessage. Il Tracker accetta questi messaggi solo dalle origini elencate in
+   SHELL_ORIGINS (Index.html), e questa pagina risponde solo al riquadro che lei stessa contiene.
+   Gli indirizzi dei deployment sono fissi qui sotto (MAI letti dall'URL: altrimenti un link
+   preparato ad arte potrebbe far caricare un'altra app e consegnarle il token). */
+var APP_URL = "https://script.google.com/macros/s/AKfycbz7ABR4Kqp5h3OM8EsigA0WXibYiNQNvH_AS10Yxc8zwX6_CoCyQ6eXc_kQgAzdS2iNxQ/exec";   // .../macros/s/<ID>/exec
+var KEY = "baTrackerSession";
+
+var params = new URLSearchParams(location.search);
+var base = APP_URL;
+// L'ambiente di prova (?ambiente=prova) è stato dismesso il 08/10/2026: si toglie la sua sessione rimasta.
+try { localStorage.removeItem("baTrackerSessionProva"); } catch (e) {}
+
+function get() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+function set(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
+
+// Chiede al browser di non cancellare la memoria di questa pagina (dove supportato).
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+// Solo il parametro "act" (link diretto a un'attività) passa al Tracker.
+var pass = new URLSearchParams();
+if (params.get("act")) pass.set("act", params.get("act"));
+var search = pass.toString() ? "?" + pass.toString() : "";
+
+var frame = document.createElement("iframe");
+frame.id = "app";
+frame.title = "Biathlon Azzurro Tracker";
+frame.allow = "clipboard-write";
+// Riquadro SENZA credenziali (Chrome/Edge): script.google.com non riceve i cookie degli account Google
+// del browser, quindi niente "Impossibile aprire il file" con più account collegati. Va impostato
+// PRIMA di src. Safari e Firefox non mandano comunque quei cookie ai riquadri.
+frame.setAttribute("credentialless", "");
+try { frame.credentialless = true; } catch (e) {}
+frame.src = base + search;
+frame.addEventListener("load", function () { var w = document.getElementById("wait"); if (w) w.remove(); });
+document.body.appendChild(frame);
+
+// Il messaggio deve venire da un riquadro di Apps Script CONTENUTO in questa pagina.
+function fromOurFrame(src) {
+  var w = src;
+  for (var i = 0; i < 6 && w; i++) {
+    if (w === frame.contentWindow) return true;
+    if (w === window || w.parent === w) return false;
+    w = w.parent;
+  }
+  return false;
+}
+
+window.addEventListener("message", function (ev) {
+  if (!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(ev.origin)) return;
+  if (!fromOurFrame(ev.source)) return;
+  var d = ev.data || {};
+  if (typeof d.reqId !== "string" || d.reqId.length > 40) return;
+  if (d.type === "ba-tracker:set" && typeof d.token === "string" && /^[A-Za-z0-9]{40,128}$/.test(d.token)) set(d.token);
+  else if (d.type === "ba-tracker:clear") set("");
+  else if (d.type !== "ba-tracker:get") return;
+  ev.source.postMessage({ reqId: d.reqId, token: get(), search: search }, ev.origin);
+});
+</script>
+</body>
+</html>
